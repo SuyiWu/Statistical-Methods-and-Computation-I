@@ -1,0 +1,188 @@
+---
+title: "Homework 3"
+subtitle: "SDGB 7844, Prof. Nagaraja"
+author: "Yuwen(Suyi) Wu 3:30 PM - 5:30 PM"
+date: "11/01/2018"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(tidyverse)
+theme.info <- theme(plot.title = element_text(size=27, face = "bold", hjust=0.5),
+                    axis.title = element_text(size=20, face = "bold"),
+                    axis.text=element_text(size=20, face = "bold"),
+                    legend.title = element_blank(),
+                    legend.position="top") 
+```
+
+## Question 1
+
+Simulate the capture-recapture method for a population of size N = 5, 000 when n1 = 100 and n2 = 100 using the sample() function (we assume that each individual is equally likely to be “captured”). Determine m2 and calculate NˆLP using Eq.1. (Hint: think of everyone in your population as having an assigned number from 1 to 5,000, then when you sample from this population, you say you selected person 5, person 8, etc., for example.)
+
+Solution: 
+
+```{r}
+N <- 5000
+n1 <- 100 
+n2 <- 100
+s1 <- sample(x = 1:5000, size = 100, replace = TRUE)
+s1 ## check for number captured
+s2 <- sample(x = 1:5000, size = 100, replace = TRUE)
+s2 ## check for number captured in the second time
+s3 <- intersect (s1,s2)
+s3 ## find the fish been captured twice
+m2 <- length(s3)
+Nlp <- n1*n2/m2
+Nlp
+
+
+```
+
+
+## Question 2
+
+Write a function to simulate the capture-recapture procedure using the inputs: N, n1, n2, and the number of simulation runs. The function should output in list form (a) a data frame with two columns: the values of m2 and NˆLP for each iteration and (b) N. Run your simulation for 1,000 iterations for a population of size N =5,000 where n1 = n2 = 100 and make a histogram of the resulting NˆLP vector2. Indicate N on your plot.
+
+Solution: 
+
+```{r,echo=FALSE,warning = FALSE,error = FALSE,message = FALSE,fig.width=14, fig.height=10}
+
+captureRecapture <- function(n.sim,N,n1,n2){
+  m2.vector <- rep(NA, times = n.sim)
+  Nlp.vector <- rep(NA, times = n.sim)
+  for(i in 1:n.sim){
+      s1 <- sample(1:N, size = n1, replace = TRUE)
+      s2 <- sample(1:N, size = n2, replace = TRUE)
+      s3 <- intersect(s1,s2)
+      m2 <- length(s3)
+      Nlp <- n1*n2/m2
+      m2.vector[i] <- m2
+      Nlp.vector[i] <- Nlp
+  }
+  result.a <- tibble(
+    "m2" = m2.vector,
+    "NLP" = Nlp.vector)
+  list_Result <- list("Sim Result" = result.a, "N" = N)
+  return(list_Result)
+} ## end function
+
+list_Result <- captureRecapture(n.sim = 1000, N = 5000, n1 = 100, n2 = 100)
+nlp <- filter(list_Result$`Sim Result`, NLP != Inf)
+
+
+
+
+hist.1 <- nlp %>% ggplot(aes(NLP))+
+  geom_histogram(color = "#663A44", fill="#663A44", bins = 30)+
+  geom_vline(xintercept=c(5000), linetype=5, color="Black")+
+  ggtitle("Histogram of Estimated Total Population (N=5000)")+
+  labs(x = "Number of Estimated Total Population", y = "Frequency")+
+  theme.info
+
+hist.1
+
+```
+
+
+
+
+## Question 3
+
+What percent of the estimated population values in question 2 were infinite? Why can this occur?
+
+
+Solution: 
+
+```{r}
+number <- length(which(is.infinite(list_Result$`Sim Result`$`NLP`)))
+number/1000
+```
+
+
+
+There are about 12.5% of estimated population were infinite. That is because when the intersection of n1 and n2 is zero, the estimated population value is infinite.
+
+## Question 4
+
+An alternative to the Lincoln-Peterson estimator is the Chapman estimator:
+NˆC = (((n1+1)(n2+1)/(m2 + 1)) - 1
+Use the saved m2 values from question 2 to compute the corresponding Chapman estimates for each iteration of your simulation. Construct a histogram of the resulting NˆC estimates, indicating N on your plot.
+
+
+Solution: 
+
+```{r,echo=FALSE,warning = FALSE,error = FALSE,message = FALSE,fig.width=14, fig.height=10}
+n1 <- 100
+n2 <- 100
+m2 <- list_Result$`Sim Result`$m2
+N_C.vector <- rep(NA, times = length(m2))
+for (i in 1:length(m2)){
+  N_C <- ((n1+1)*(n2+1))/(m2[i] + 1) - 1
+  N_C.vector[i] <- N_C
+}
+
+## N_C.vector  ## CHECKING FOR DATA
+nc <- tibble(N_C.vector)
+hist.2 <- nc %>% ggplot(aes(N_C.vector))+
+  geom_histogram(color = "#663A44", fill="#663A44", bins = 30)+
+  geom_vline(xintercept=c(5000), linetype=5, color="Black")+
+  ggtitle("Histogram of Estimated Total Population with Chapman Method (N=5000)")+
+  labs(x = "Number of Estimated Total Population Chapman Method", y = "Frequency")+
+  theme.info
+
+hist.2
+
+
+```
+
+
+
+## Question 5
+
+Solution: 
+
+```{r}
+n.sim <- 1000
+sum(list_Result$`Sim Result`$NLP)/n.sim ## calculate the estimator with infinite
+
+NLP <- filter(list_Result$`Sim Result`, NLP != Inf) ## filter the infinite value
+NLP ## checking data 
+mean(NLP$NLP) ## calculate estimator without infinite value
+bia.nlp <- abs(mean(NLP$NLP) - N) ## calculate bias of estimator
+bia.nlp
+sum(N_C.vector/n.sim) ## calculate estimator in Chapman Method
+bia.nc <- abs(sum(N_C.vector/n.sim) - N) ## calculate bias of estimator
+bia.nc
+```
+
+
+As the result, Both estimators are biased when n1,n2 = 100.
+
+
+## Question 6
+
+Based on your findings, is the Lincoln-Peterson or Chapman estimator better? Explain your answer.
+
+Solution: 
+
+The chapmen estimators is better because the smaple size and the m2 we captured are not large enough.
+In lincoln-peterson method, we omited lots of infinite numbers, in this case, so we have bigger biased.
+For small size data, the estimator would be unbiased when n1 and n2 larger.
+Therefore, in this question, Chapman estimator would be better.
+
+## Question 7
+
+Explain why the assumptions (a), (b), and (c) listed on the first page are unrealistic.
+
+Solution: 
+
+
+(a)each individual is independently captured
+It is unrealistic because most fish are living together. In this case, the fish might not captured independently and fish would be captured together with other fish nearby.
+(b)each individual is equally likely to be captured
+We cannot make sure that every one is equally likely to be captured,and in realistic, captured fish is the fish that we can find. If someone hide for a long time, the exact population will be biased.
+(c)there are no births, deaths, immigration, or emigration of individuals (i.e., a closed population)
+This is not realistic because we could not make sure no death and birth in fish group. The fish also would migrate to other place or hide at the begining. So, this is unrealistic. 
+
+
