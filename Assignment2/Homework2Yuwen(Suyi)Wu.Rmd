@@ -1,0 +1,325 @@
+---
+title: "Homework 2"
+subtitle: "SDGB 7844, Prof. Nagaraja"
+author: "Yuwen (Suyi) Wu, 330-530PM"
+date: "10/17/2017"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(tidyverse)
+require(RColorBrewer)
+require(rgdal)
+require(gridExtra)
+require(GGally)
+theme.info <- theme(plot.title = element_text(size=30, face = "bold", hjust=0.5),
+                    axis.title = element_text(size=25),
+                    axis.text=element_text(size=20, face = "bold")) 
+```
+
+## Question 1
+
+
+Solution: 
+
+```{r,include=FALSE}
+# import dataset 
+
+x <- read_delim("ACS_15_5YR_DP03_with_ann.csv", col_names = TRUE, delim = ",", na = c("-", "NA"))
+y <- read_delim("ACS_15_5YR_DP04_with_ann.csv", col_names = TRUE, delim = ",",na = c("-", "NA"))
+tail(x)
+```
+
+A census tract, census area, census district or meshblock is a geographic region defined for the purpose of taking a census
+
+This is the [Wikipedia](https://en.wikipedia.org/wiki/Census_tract),where we can search for the definition of Census Tract.
+
+Census Tract 319, New York County, New York
+
+
+## Question 2
+
+Solution: 
+
+The advantage is that the larger number makes estimates more accurate, the disadvantage is that there are more outliers in larger number.
+
+## Question 3
+
+
+Solution: 
+
+```{r,echo=FALSE,warning = FALSE,error = FALSE,message = FALSE,fig.width=14, fig.height=10}
+
+## select data from database
+z1 <- select(x,"GEO.display-label",HC03_VC07) ## select required data from z1
+z2 <- select(y, HC03_VC66,HC03_VC85,HC03_VC113)## select required data from z2
+z1 <- z1[-1,]## delete no use first row
+z2 <- z2[-1,]## delete no use first row 
+z <- data.frame(z1,z2) ## combine two tibble to one dataframe
+z <- as.tibble(z) ## change to the tibble
+## check data
+## head(z)
+z <- rename(z, 
+    Geography="GEO.display.label",
+    Unemployment="HC03_VC07",
+    Housing_Tenure="HC03_VC66",
+    No_Vehicles="HC03_VC85",
+    Low_Occupancy = "HC03_VC113") 
+## rename them to easy understand name
+## at here I did not adjust the number and I adjust them together in the following question
+z$Unemployment <- as.numeric(z$Unemployment)
+z$Housing_Tenure <- as.numeric(z$Housing_Tenure)
+z$No_Vehicles <- as.numeric(z$No_Vehicles)
+z$Low_Occupancy <- 100-as.numeric(z$Low_Occupancy)
+## change type of data to compute
+## head(z)## check data type
+mean.z<-apply(z[,c("Unemployment", "Housing_Tenure","No_Vehicles", "Low_Occupancy")], 2, mean, na.rm=TRUE)
+median.z<-apply(z[,c("Unemployment", "Housing_Tenure","No_Vehicles", "Low_Occupancy")], 2, median, na.rm=TRUE)
+sd.z<-apply(z[,c("Unemployment", "Housing_Tenure","No_Vehicles", "Low_Occupancy")], 2, sd, na.rm=TRUE)
+max.z<-apply(z[,c("Unemployment", "Housing_Tenure","No_Vehicles", "Low_Occupancy")], 2, max, na.rm=TRUE)
+min.z<-apply(z[,c("Unemployment", "Housing_Tenure","No_Vehicles", "Low_Occupancy")], 2, min, na.rm=TRUE)
+## use apply function calculate summary of variables
+summary.z<-data.frame(mean.z,median.z,sd.z,max.z,min.z)
+summary.z ## get the dataframe of summary of variables
+
+
+
+## graph histogram of four raw variables
+ggplot(z, aes(Unemployment)) +
+  geom_histogram(bins = 20,fill = c("#5F7880")) +
+  ggtitle("Histogram of Unemployment") +
+  labs(x="Unemployment Rate (Percent)") +
+  theme.info
+## the Unemployment rate Histogram is right (positive) skewness.
+
+ggplot(z, aes(Housing_Tenure)) + 
+  geom_histogram(bins = 20,fill = c("#5F7880")) +
+  ggtitle("Histogram of Housing Tenure") +
+  labs(x="Renter-occupied (Percent)") +
+  theme.info
+## the Housing Tenure Histogram is left skewness.
+ggplot(z, aes(No_Vehicles)) + 
+  geom_histogram(bins = 20,fill = c("#5F7880")) +
+  ggtitle("Histogram of No Private Vehicles") +
+  labs(x="No Vehicles Available Per Unit (Percent)") +
+  theme.info
+## the No Vehicles Histogram is left skewness.
+ggplot(z, aes(Low_Occupancy)) + 
+  geom_histogram(bins = 20,fill = c("#5F7880")) +
+  ggtitle("Histogram of Low Occupancy") +
+  labs(x="Occupied Housing Units (Percent)") +
+  theme.info
+## the low occupancy histogram is left skewness.
+```
+
+
+the Unemployment rate Histogram is right (positive) skewness.
+the Housing Tenure Histogram is left skewness.
+the No Vehicles Histogram is left skewness.
+the low occupancy histogram is left skewness.
+
+## Question 4
+
+
+Solution: 
+
+```{r}
+
+sum(is.na(z$Unemployment))
+sum(is.na(z$Housing_Tenure))
+sum(is.na(z$No_Vehicles))
+sum(is.na(z$Low_Occupancy))
+1-nrow(z[complete.cases(z),] )/nrow(z) 
+
+```
+
+
+
+0.0277778 which is less than 10% so it is not the problem of analysis the missing reason is that the contract in business area of wall street or the contract in central park
+
+## Question 5
+
+
+Solution: 
+
+```{r,echo=FALSE,warning = FALSE,error = FALSE,message = FALSE,fig.width=14, fig.height=10}
+
+ggpairs(z,columns = 2:5)
+z %>%ggplot(aes(y=Housing_Tenure,  
+  x = Unemployment))+ geom_point()+ 
+  ggtitle("Variables Relationship")+
+  labs(x="Unemployment", y="Housing_Tenure") +
+  theme.info ## non-linearly related
+
+z %>%ggplot(aes(y=No_Vehicles,  
+  x = Unemployment))+ geom_point()+ 
+  ggtitle("Variables Relationship")+
+  labs(x="Unemployment", y="No_Vehicles") +
+  theme.info ## non-linearly related
+
+## adjust from percent of household with room per person to low occupancy household
+logUnemployment <- log(z$Unemployment+1)
+logHousing_Tenure <- log(z$Housing_Tenure+1)
+logNoVehicles <- sqrt(z$No_Vehicles)
+logOvercrowded <- log(z$Low_Occupancy+1)
+
+znew<-add_column(z,logUnemployment,logHousing_Tenure,logNoVehicles,logOvercrowded)
+znew %>%ggplot(aes(y=logHousing_Tenure,x = logNoVehicles))+ geom_point()+ 
+                   ggtitle("Log Variables Relationship")+labs(x = "LogNoVehicles", 
+                   y="LogHousingTenure") +
+                   theme.info
+## there are linearly related
+cormatrix <- drop_na(data.frame(logUnemployment,logHousing_Tenure,logNoVehicles,logOvercrowded))
+ggpairs(cormatrix,columns = 1:4)
+## drop NA value in variables to get correaltion matrix of four variables
+head(cormatrix)
+tail(cormatrix)
+M <- cor(cormatrix)
+M ## from the correlation matrix, it shows these four variables are related.
+```
+
+ENTER YOUR ANSWER HERE.
+
+It cannot be seen any relationship between raw data.
+However, after adjustment of data, from the correlation matrix, it shows these four variables are related.
+
+## Question 6
+
+
+Solution: 
+
+```{r}
+
+##check data
+##znew
+mean.unemp<- mean(znew$logUnemployment,na.rm = TRUE)
+mean.oc<- mean(znew$logOvercrowded,na.rm = TRUE)
+mean.rent <- mean(znew$logHousing_Tenure,na.rm = TRUE)
+mean.car <- mean(znew$logNoVehicles,na.rm = TRUE)
+std.unemp <- sd(znew$logUnemployment,na.rm = TRUE)
+std.oc <- sd(znew$logOvercrowded,na.rm = TRUE)
+std.rent <- sd(znew$logHousing_Tenure,na.rm = TRUE)
+std.car <- sd(znew$logNoVehicles,na.rm = TRUE)
+standard.unemp <- (znew$logUnemployment-mean.unemp)/std.unemp
+standard.oc<-(znew$logOvercrowded-mean.oc)/std.oc
+standard.rent<-(znew$logHousing_Tenure-mean.rent)/std.rent
+standard.car <- (znew$logNoVehicles-mean.car)/std.car
+townsendIndex <- data.frame(standard.unemp,standard.oc,standard.rent,standard.car)
+head(townsendIndex)
+townsendIndex<-data.frame(znew$Geography,townsendIndex,
+                          townsend = rowSums(townsendIndex))
+head(townsendIndex)
+tail(townsendIndex)
+nrow(drop_na(townsendIndex))
+
+```
+ENTER YOUR ANSWER HERE.
+
+There are only 280 tracts could be compute with Townsend Index
+The row with NA value will be become NA in townsend column because the standardize process would make it become NA with NA minus a number
+
+## Question 7
+
+
+Solution: 
+
+```{r}
+
+head(townsendIndex)
+head(arrange(townsendIndex,townsend))
+
+```
+
+
+The Census Tract 217.03 is the least deprived Tract and the Census Tract 285 is the most deprived Tract.
+In the most deprived Tract, the unemployment rate is higher than almost 95% of the all tracts considering the standardized unemployment rate is 2.32. and the overcrowed rate is also higher than average. Therefore, I don't want live in such place.
+
+## Question 8
+
+
+Solution: 
+
+
+The margin of error is a statistic expressing the amount of random sampling error in a survey's results.
+We ignore these errors because there are small enough to have no influence on our data estimate.
+
+## Question 9
+
+
+Solution: 
+
+```{r,echo=FALSE,warning = FALSE,error = FALSE,message = FALSE,fig.width=14,fig.height= 18}
+
+townsendIndex <- townsendIndex %>% mutate(city_group_equal = 
+          cut(townsendIndex$townsend,breaks=c(quantile(townsendIndex$townsend, 
+                                              probs = seq(0, 1, by=0.20),
+                                              na.rm = TRUE))))
+newyork.map <- readOGR(dsn="tl_2015_36_tract", layer="tl_2015_36_tract")
+#plot(newyork.map)
+newyork.map <- subset(newyork.map, is.element(newyork.map$COUNTYFP, "061"))
+townsendIndex$znew.Geography <- sub('...........................$','',townsendIndex$znew.Geography)
+match(newyork.map$NAMELSAD, townsendIndex$znew.Geography)
+townsendIndex <- townsendIndex %>% slice(match(newyork.map$NAMELSAD,townsendIndex$znew.Geography))
+color.palette <- brewer.pal(n=length(levels(townsendIndex$city_group_equal)),"Spectral")
+townsendIndex <- townsendIndex %>% mutate(color_city_equal= cut(townsend,
+                                          breaks=c(quantile(townsendIndex$townsend, 
+                                          probs = seq(0, 1, by = 0.20),na.rm = TRUE)),
+                                          labels= color.palette ))
+dim(z)
+## in order to show on the Report, I comment out the picrture save code
+## and I repeat it again in order to output in the computer
+## pdf("townsendIndex_map.pdf", width=14, height=20)
+plot(newyork.map, col=as.character(townsendIndex$color_city_equal,"white"))
+newyork.map@bbox
+legend("bottomleft", legend=c(levels(townsendIndex$city_group_equal), "no data"), fill=c(color.palette, "white"), cex=1.5, bty="n", y.intersp=1.5, ncol=2)
+text(-73.99, 40.88221, cex=2.0, labels=c("Townsend Material Deprivation Index for census tracts in New York County\n(Source: American Community Survey (ACS) data, 2015)"))
+
+arrows(x0=-74.03559, y0=40.80466, x1=-73.98345, y1=40.76885, length=0.1, lwd=2) ## small arrow or big arrow lwd = 5
+text(-74.03559, 40.80466, labels="140 W. 62nd St \n Fordham University tract 145",cex = 2.0)
+## dev.off() ## finish the plot process
+
+pdf("townsendIndex_map.pdf", width=14, height=20)
+plot(newyork.map, col=as.character(townsendIndex$color_city_equal,"white"))
+newyork.map@bbox
+legend("bottomleft", legend=c(levels(townsendIndex$city_group_equal), "no data"), fill=c(color.palette, "white"), cex=1.5, bty="n", y.intersp=1.5, ncol=2)
+text(-73.99, 40.88221, cex=2.0, labels=c("Townsend Material Deprivation Index for census tracts in New York County\n(Source: American Community Survey (ACS) data, 2015)"))
+
+arrows(x0=-74.03559, y0=40.80466, x1=-73.98345, y1=40.76885, length=0.1, lwd=2) ## small arrow or big arrow lwd = 5
+text(-74.03559, 40.80466, labels="140 W. 62nd St \n Fordham University tract 145",cex = 2.0)
+dev.off() ## finish the plot process
+
+```
+
+
+As what I know , the upper east town would be so call "rich area",which is same to my output graph. In the graph, the upper east town is red majority which means this area is less deprived area than other area in New York County. the Mid West Town is an average area which is also fit to my knowledge about where I live. 
+The middle area of rectangualr is the central park which is no data. 
+
+## Question 10
+
+
+Solution: 
+
+```{r}
+
+## add a row of rank of townsend
+townsendIndex <- townsendIndex%>%arrange(desc(townsend))%>%mutate(no=rownames(townsendIndex))         
+head(townsendIndex) ## check the rank
+filter(townsendIndex, znew.Geography == "Census Tract 145")
+
+```
+
+
+The census tract of 140W 62nd St. is 145 Tract
+This is the [AmericanFactFinder](https://factfinder.census.gov/faces/nav/jsf/pages/searchresults.xhtml?ref=geo&refresh=t&tab=map&src=bkmk),where we can search for the Census Tract of Fordham Univerisity.
+The rank of Cunsus Tract 145 is No. 218 from most deprived tract to lest deprived tract
+
+## Question 11
+
+
+Solution: 
+
+
+We should not combine New York County to other county in New York States because the New York City is really different from other county considering its economy, location and business condition.
+
+
